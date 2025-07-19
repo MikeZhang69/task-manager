@@ -62,6 +62,9 @@
         </header>
 
         <!-- Form to add new tasks -->
+        <div id="notification-warning" class="max-w-3xl mx-auto mb-4 p-3 bg-red-700 text-white rounded-lg shadow-lg hidden">
+            <span>⚠️ Notifications are blocked or denied. Please enable them in your browser settings for reminders to work.</span>
+        </div>
         <div class="max-w-3xl mx-auto mb-8 p-4 bg-gray-800 rounded-lg shadow-lg">
             <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <input type="text" id="task-input" placeholder="Enter a new task..." class="md:col-span-2 bg-gray-700 text-white placeholder-gray-400 border-2 border-gray-600 rounded-md py-2 px-4 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition duration-200">
@@ -79,6 +82,7 @@
                         <span id="breakdown-btn-text">✨ Break Down</span>
                         <div id="breakdown-spinner" class="spinner hidden"></div>
                     </button>
+                    <button id="test-notification-btn" class="bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-md shadow-md transition transform hover:scale-105">Test Notification</button>
                 </div>
             </div>
         </div>
@@ -331,6 +335,7 @@
             taskReminderInput.checked = false;
             validateForm();
             render();
+            checkReminders(); // Immediately check reminders after adding a task
         }
 
         async function handleBreakdownTask() {
@@ -554,11 +559,36 @@
         taskDueDateInput.value = getTodayDateString();
         taskDueTimeInput.value = getCurrentTimeString();
         validateForm();
-        
-        // Request notification permission on load
-        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-            Notification.requestPermission();
+
+        // Notification permission and warning logic
+        const notificationWarning = document.getElementById('notification-warning');
+        function updateNotificationWarning() {
+            if (Notification.permission === 'denied') {
+                notificationWarning.classList.remove('hidden');
+            } else {
+                notificationWarning.classList.add('hidden');
+            }
         }
+
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission().then(updateNotificationWarning);
+        } else {
+            updateNotificationWarning();
+        }
+
+        // Test Notification Button
+        document.getElementById('test-notification-btn').addEventListener('click', () => {
+            if (Notification.permission === 'granted') {
+                new Notification('Test Notification', {
+                    body: 'This is a test notification. If you see this, reminders will work!',
+                    icon: 'https://placehold.co/48x48/6366f1/ffffff?text=🔔'
+                });
+            } else if (Notification.permission !== 'denied') {
+                Notification.requestPermission().then(updateNotificationWarning);
+            } else {
+                updateNotificationWarning();
+            }
+        });
 
         // Check for reminders every 30 seconds
         setInterval(checkReminders, 30000);
