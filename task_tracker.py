@@ -73,55 +73,108 @@ class TaskTrackerApp(tk.Tk):
         if self.calendar_frame:
             self.calendar_frame.destroy()
         self.calendar_frame = ttk.Frame(self.main_frame)
-        self.calendar_frame.pack(fill='both', expand=True)
+        self.calendar_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
         # Month/year navigation
         now = datetime.now()
         if year is None:
             year = now.year
         if month is None:
             month = now.month
+            
         nav_frame = tk.Frame(self.calendar_frame, bg=self.bg_color)
-        nav_frame.pack(fill='x', pady=4)
+        nav_frame.pack(fill='x', pady=(0, 20))
+        
         def prev_month():
-            prev_m = month - 1
-            prev_y = year
-            if prev_m < 1:
-                prev_m = 12
-                prev_y -= 1
-            self.show_calendar(prev_y, prev_m)
+            if month == 1:
+                self.show_calendar(year - 1, 12)
+            else:
+                self.show_calendar(year, month - 1)
+            
         def next_month():
-            next_m = month + 1
-            next_y = year
-            if next_m > 12:
-                next_m = 1
-                next_y += 1
-            self.show_calendar(next_y, next_m)
-        tk.Button(nav_frame, text='<', command=prev_month, bg='#27272a', fg='#facc15', font=('Inter', 12, 'bold'), relief='flat', width=3).pack(side='left', padx=8)
-        tk.Label(nav_frame, text=f'{year}-{month:02d}', bg=self.bg_color, fg='#f1f5f9', font=('Inter', 13, 'bold')).pack(side='left', padx=8)
-        tk.Button(nav_frame, text='>', command=next_month, bg='#27272a', fg='#facc15', font=('Inter', 12, 'bold'), relief='flat', width=3).pack(side='left', padx=8)
-        # Simple monthly calendar (current month)
+            if month == 12:
+                self.show_calendar(year + 1, 1)
+            else:
+                self.show_calendar(year, month + 1)
+            
+        tk.Button(nav_frame, text='<', command=prev_month, bg='#27272a', fg='#facc15', 
+                 font=('Inter', 14, 'bold'), relief='flat', width=4, height=2).pack(side='left', padx=10)
+        tk.Label(nav_frame, text=f'{year}-{month:02d}', bg=self.bg_color, fg='#f1f5f9', 
+                font=('Inter', 18, 'bold')).pack(side='left', padx=20)
+        tk.Button(nav_frame, text='>', command=next_month, bg='#27272a', fg='#facc15', 
+                 font=('Inter', 14, 'bold'), relief='flat', width=4, height=2).pack(side='left', padx=10)
+        
+        # Calendar grid
+        cal_frame = tk.Frame(self.calendar_frame, bg=self.bg_color)
+        cal_frame.pack(fill='both', expand=True)
+        
+        # Configure grid weights for proper expansion
+        for i in range(7):
+            cal_frame.columnconfigure(i, weight=1)
+        for i in range(7):  # 6 weeks max + header
+            cal_frame.rowconfigure(i, weight=1)
+        
+        # Improved calendar colors
+        day_bg = '#374151'          # Lighter gray for better contrast
+        day_fg = '#f9fafb'          # Brighter white text
+        border_color = '#6b7280'    # Lighter border
+        header_bg = '#4f46e5'       # Purple header background
+        header_fg = 'white'         # White header text
+        
+        # Day headers
+        for i, day_name in enumerate(['Mon','Tue','Wed','Thu','Fri','Sat','Sun']):
+            header_label = tk.Label(cal_frame, text=day_name, bg=header_bg, fg=header_fg, 
+                                  borderwidth=1, relief='solid', font=('Inter', 12, 'bold'), 
+                                  highlightbackground=border_color, highlightcolor=border_color, 
+                                  highlightthickness=1, height=2)
+            header_label.grid(row=0, column=i, sticky='nsew', padx=1, pady=1)
+        
+        # Calculate calendar layout
         first_day = datetime(year, month, 1)
         start_weekday = first_day.weekday()
-        days_in_month = (datetime(year, month+1, 1) - timedelta(days=1)).day if month < 12 else 31
-        cal_frame = tk.Frame(self.calendar_frame, bg=self.bg_color)
-        cal_frame.pack()
-        day_bg = '#27272a'
-        day_fg = '#f1f5f9'
-        border_color = '#3f3f46'
-        for i, day_name in enumerate(['Mon','Tue','Wed','Thu','Fri','Sat','Sun']):
-            tk.Label(cal_frame, text=day_name, bg=day_bg, fg=day_fg, borderwidth=1, relief='solid', width=10, font=('Inter', 11, 'bold'), highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1).grid(row=0, column=i, sticky='nsew')
+        
+        # Get correct days in month
+        if month == 12:
+            days_in_month = (datetime(year + 1, 1, 1) - timedelta(days=1)).day
+        else:
+            days_in_month = (datetime(year, month + 1, 1) - timedelta(days=1)).day
+        
+        # Create calendar cells
         row = 1
         col = start_weekday
-        for day in range(1, days_in_month+1):
-            cell = tk.Frame(cal_frame, bg=day_bg, bd=1, relief='solid', highlightbackground=border_color, highlightcolor=border_color, highlightthickness=1, width=100, height=60)
+        
+        for day in range(1, days_in_month + 1):
+            cell = tk.Frame(cal_frame, bg=day_bg, bd=1, relief='solid', 
+                          highlightbackground=border_color, highlightcolor=border_color, 
+                          highlightthickness=1)
             cell.grid(row=row, column=col, sticky='nsew', padx=1, pady=1)
+            
             # Day number
-            tk.Label(cell, text=str(day), bg=day_bg, fg='#facc15', font=('Inter', 10, 'bold')).pack(anchor='nw', padx=2, pady=2)
+            day_label = tk.Label(cell, text=str(day), bg=day_bg, fg='#fbbf24', 
+                               font=('Inter', 14, 'bold'))
+            day_label.pack(anchor='nw', padx=4, pady=4)
+            
+            # Tasks for this day
             date_str = f"{year}-{month:02d}-{day:02d}"
             tasks = [t for t in self.task_manager.tasks if t.due_date == date_str]
-            for t in tasks:
-                fg = '#22c55e' if t.status=='done' else day_fg
-                tk.Label(cell, text=f"{t.due_time or ''} {t.text}", bg=day_bg, fg=fg, font=('Inter', 10)).pack(anchor='w', padx=2)
+            
+            # Create scrollable frame for tasks if there are many
+            if tasks:
+                task_frame = tk.Frame(cell, bg=day_bg)
+                task_frame.pack(fill='both', expand=True, padx=2, pady=2)
+                
+                for t in tasks[:3]:  # Show max 3 tasks to avoid overcrowding
+                    fg = '#22c55e' if t.status == 'done' else day_fg
+                    task_text = f"{t.due_time or ''} {t.text}"
+                    if len(task_text) > 15:
+                        task_text = task_text[:12] + "..."
+                    tk.Label(task_frame, text=task_text, bg=day_bg, fg=fg, 
+                           font=('Inter', 9), wraplength=120).pack(anchor='w', pady=1)
+                
+                if len(tasks) > 3:
+                    tk.Label(task_frame, text=f"+{len(tasks)-3} more", bg=day_bg, 
+                           fg='#a1a1aa', font=('Inter', 8)).pack(anchor='w')
+            
             col += 1
             if col > 6:
                 col = 0
@@ -158,8 +211,10 @@ class TaskTrackerApp(tk.Tk):
         self.style.configure('TLabel', background=self.bg_color, foreground=self.fg_color)
         self.style.configure('Kanban.TLabelframe', background=self.bg_color, foreground=self.fg_color, borderwidth=0)
         self.style.configure('Kanban.TLabelframe.Label', background=self.bg_color, foreground=self.fg_color)
-        self.style.configure('Kanban.TButton', background='#27272a', foreground=self.fg_color, borderwidth=0, padding=6)
-        self.style.map('Kanban.TButton', background=[('active', '#6366f1')])
+        self.style.configure('Kanban.TButton', background='#4f46e5', foreground='white', borderwidth=1, padding=8)
+        self.style.map('Kanban.TButton', 
+                      background=[('active', '#6366f1'), ('pressed', '#3730a3')],
+                      foreground=[('active', 'white'), ('pressed', 'white')])
 
         # View switcher
         top_frame = ttk.Frame(self, style='TFrame')
@@ -362,65 +417,110 @@ class TaskDialog(simpledialog.Dialog):
         date_entry = tk.Entry(master, textvariable=self.date_var)
         date_entry.grid(row=1, column=1, sticky='w')
         def pick_date():
-            import functools
             top = tk.Toplevel(master)
-            top.title('Pick a date')
-            today = datetime.now()
-            state = {'year': today.year, 'month': today.month}
+            top.title('Select Date')
+            top.geometry('400x280')
+            top.resizable(False, False)
+            top.grab_set()  # Make it modal
+            top.configure(bg='#18181b')
+            
+            # Center the window
+            top.transient(master)
+            
+            main_frame = tk.Frame(top, bg='#18181b')
+            main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+            
+            # Title
+            title_label = tk.Label(main_frame, text='Select Date', font=('Inter', 16, 'bold'),
+                                 bg='#18181b', fg='#f1f5f9')
+            title_label.pack(pady=(0, 20))
+            
+            # Date selection frame
+            date_frame = tk.Frame(main_frame, bg='#18181b')
+            date_frame.pack(pady=10)
+            
+            # Get current date or default
+            current_date = datetime.now()
             if self.date_var.get():
                 try:
-                    y, m, _ = map(int, self.date_var.get().split('-'))
-                    state['year'], state['month'] = y, m
+                    current_date = datetime.strptime(self.date_var.get(), '%Y-%m-%d')
                 except ValueError:
                     pass
-
-            cal_frame = tk.Frame(top)
-            cal_frame.pack()
-
-            for i, day_name in enumerate(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']):
-                tk.Label(cal_frame, text=day_name, font=('Inter', 9)).grid(row=1, column=i)
-
-            def update_calendar():
-                year, month = state['year'], state['month']
-                header.config(text=f'{year}-{month:02d}')
-                # Remove only day buttons (rows >= 2)
-                for widget in cal_frame.grid_slaves():
-                    info = widget.grid_info()
-                    if int(info['row']) >= 2:
-                        widget.destroy()
-                weeks = calendar.monthcalendar(year, month)  # Each week is a list of 7 ints (0=empty)
-                for row_idx, week in enumerate(weeks):
-                    for col_idx, day in enumerate(week):
-                        if day == 0:
-                            tk.Label(cal_frame, text='', width=3).grid(row=row_idx + 2, column=col_idx)
-                        else:
-                            def set_date(d):
-                                self.date_var.set(f'{year}-{month:02d}-{d:02d}')
-                                top.destroy()
-                            btn = tk.Button(cal_frame, text=str(day), width=3, command=functools.partial(set_date, day))
-                            btn.grid(row=row_idx + 2, column=col_idx)
-
-            # Header and navigation (created after functions)
-            header = tk.Label(cal_frame, text='', font=('Inter', 11, 'bold'))
-            header.grid(row=0, column=1, columnspan=5)
-
-            def prev_m():
-                state['month'] -= 1
-                if state['month'] < 1:
-                    state['month'] = 12
-                    state['year'] -= 1
-                update_calendar()
-
-            def next_m():
-                state['month'] += 1
-                if state['month'] > 12:
-                    state['month'] = 1
-                    state['year'] += 1
-                update_calendar()
-
-            tk.Button(cal_frame, text='<', command=prev_m).grid(row=0, column=0)
-            tk.Button(cal_frame, text='>', command=next_m).grid(row=0, column=6)
-            update_calendar()
+            
+            # Year selection
+            tk.Label(date_frame, text='Year:', bg='#18181b', fg='#f1f5f9', 
+                    font=('Inter', 12)).grid(row=0, column=0, padx=10, pady=8, sticky='e')
+            year_var = tk.StringVar(value=str(current_date.year))
+            year_spinbox = tk.Spinbox(date_frame, from_=2020, to=2030, textvariable=year_var,
+                                    width=10, font=('Inter', 12), bg='#27272a', fg='#f1f5f9',
+                                    buttonbackground='#27272a', relief='solid', bd=1)
+            year_spinbox.grid(row=0, column=1, padx=10, pady=8)
+            
+            # Month selection
+            tk.Label(date_frame, text='Month:', bg='#18181b', fg='#f1f5f9',
+                    font=('Inter', 12)).grid(row=1, column=0, padx=10, pady=8, sticky='e')
+            month_var = tk.StringVar(value=str(current_date.month))
+            month_spinbox = tk.Spinbox(date_frame, from_=1, to=12, textvariable=month_var,
+                                     width=10, font=('Inter', 12), bg='#27272a', fg='#f1f5f9',
+                                     buttonbackground='#27272a', relief='solid', bd=1)
+            month_spinbox.grid(row=1, column=1, padx=10, pady=8)
+            
+            # Day selection
+            tk.Label(date_frame, text='Day:', bg='#18181b', fg='#f1f5f9',
+                    font=('Inter', 12)).grid(row=2, column=0, padx=10, pady=8, sticky='e')
+            day_var = tk.StringVar(value=str(current_date.day))
+            day_spinbox = tk.Spinbox(date_frame, from_=1, to=31, textvariable=day_var,
+                                   width=10, font=('Inter', 12), bg='#27272a', fg='#f1f5f9',
+                                   buttonbackground='#27272a', relief='solid', bd=1)
+            day_spinbox.grid(row=2, column=1, padx=10, pady=8)
+            
+            # Buttons
+            btn_frame = tk.Frame(main_frame, bg='#18181b')
+            btn_frame.pack(pady=(30, 0))
+            
+            def set_today():
+                today = datetime.now()
+                year_var.set(str(today.year))
+                month_var.set(str(today.month))
+                day_var.set(str(today.day))
+            
+            def apply_date():
+                try:
+                    year = int(year_var.get())
+                    month = int(month_var.get())
+                    day = int(day_var.get())
+                    # Validate date
+                    selected_date = datetime(year, month, day)
+                    self.date_var.set(selected_date.strftime('%Y-%m-%d'))
+                    top.destroy()
+                except ValueError:
+                    messagebox.showerror('Invalid Date', 'Please enter a valid date.')
+                except Exception as e:
+                    messagebox.showerror('Error', f'An error occurred: {str(e)}')
+            
+            # Create buttons with highly visible text
+            today_btn = tk.Button(btn_frame, text='Today', command=set_today,
+                                bg='lightblue', fg='black', font=('Arial', 14, 'bold'), 
+                                relief='raised', bd=3, padx=20, pady=10, cursor='hand2',
+                                activebackground='blue', activeforeground='white')
+            today_btn.pack(side='left', padx=10)
+            
+            ok_btn = tk.Button(btn_frame, text='OK', command=apply_date,
+                             bg='lightgreen', fg='black', font=('Arial', 14, 'bold'), 
+                             relief='raised', bd=3, padx=25, pady=10, cursor='hand2',
+                             activebackground='green', activeforeground='white')
+            ok_btn.pack(side='left', padx=10)
+            
+            cancel_btn = tk.Button(btn_frame, text='Cancel', command=top.destroy,
+                                 bg='lightcoral', fg='black', font=('Arial', 14, 'bold'), 
+                                 relief='raised', bd=3, padx=20, pady=10, cursor='hand2',
+                                 activebackground='red', activeforeground='white')
+            cancel_btn.pack(side='left', padx=10)
+            
+            # Focus on OK button and bind Enter key
+            ok_btn.focus_set()
+            top.bind('<Return>', lambda e: apply_date())
+            top.bind('<Escape>', lambda e: top.destroy())
         tk.Button(master, text='Pick', command=pick_date).grid(row=1, column=2, padx=2)
         tk.Label(master, text='Due Time (HH:MM):').grid(row=2, column=0)
         self.time_var = tk.StringVar(value=self.task.due_time if self.task else datetime.now().strftime('%H:%M'))
