@@ -423,31 +423,21 @@ class TaskDialog(simpledialog.Dialog):
             top.resizable(False, False)
             top.grab_set()  # Make it modal
             top.configure(bg='#18181b')
-            
             # Center the window
             top.transient(master)
-            
             main_frame = tk.Frame(top, bg='#18181b')
             main_frame.pack(fill='both', expand=True, padx=20, pady=20)
-            
-            # Title
             title_label = tk.Label(main_frame, text='Select Date', font=('Inter', 16, 'bold'),
                                  bg='#18181b', fg='#f1f5f9')
             title_label.pack(pady=(0, 20))
-            
-            # Date selection frame
             date_frame = tk.Frame(main_frame, bg='#18181b')
             date_frame.pack(pady=10)
-            
-            # Get current date or default
             current_date = datetime.now()
             if self.date_var.get():
                 try:
                     current_date = datetime.strptime(self.date_var.get(), '%Y-%m-%d')
                 except ValueError:
                     pass
-            
-            # Year selection
             tk.Label(date_frame, text='Year:', bg='#18181b', fg='#f1f5f9', 
                     font=('Inter', 12)).grid(row=0, column=0, padx=10, pady=8, sticky='e')
             year_var = tk.StringVar(value=str(current_date.year))
@@ -455,8 +445,6 @@ class TaskDialog(simpledialog.Dialog):
                                     width=10, font=('Inter', 12), bg='#27272a', fg='#f1f5f9',
                                     buttonbackground='#27272a', relief='solid', bd=1)
             year_spinbox.grid(row=0, column=1, padx=10, pady=8)
-            
-            # Month selection
             tk.Label(date_frame, text='Month:', bg='#18181b', fg='#f1f5f9',
                     font=('Inter', 12)).grid(row=1, column=0, padx=10, pady=8, sticky='e')
             month_var = tk.StringVar(value=str(current_date.month))
@@ -464,8 +452,6 @@ class TaskDialog(simpledialog.Dialog):
                                      width=10, font=('Inter', 12), bg='#27272a', fg='#f1f5f9',
                                      buttonbackground='#27272a', relief='solid', bd=1)
             month_spinbox.grid(row=1, column=1, padx=10, pady=8)
-            
-            # Day selection
             tk.Label(date_frame, text='Day:', bg='#18181b', fg='#f1f5f9',
                     font=('Inter', 12)).grid(row=2, column=0, padx=10, pady=8, sticky='e')
             day_var = tk.StringVar(value=str(current_date.day))
@@ -473,23 +459,34 @@ class TaskDialog(simpledialog.Dialog):
                                    width=10, font=('Inter', 12), bg='#27272a', fg='#f1f5f9',
                                    buttonbackground='#27272a', relief='solid', bd=1)
             day_spinbox.grid(row=2, column=1, padx=10, pady=8)
-            
-            # Buttons
+            def update_day_spinbox(*args):
+                try:
+                    y = int(year_var.get())
+                    m = int(month_var.get())
+                    import calendar
+                    max_day = calendar.monthrange(y, m)[1]
+                    current_day = int(day_var.get())
+                    day_spinbox.config(to=max_day)
+                    if current_day > max_day:
+                        day_var.set(str(max_day))
+                except Exception:
+                    pass
+            year_var.trace_add('write', update_day_spinbox)
+            month_var.trace_add('write', update_day_spinbox)
+            # Initialize day spinbox max value
+            update_day_spinbox()
             btn_frame = tk.Frame(main_frame, bg='#18181b')
             btn_frame.pack(pady=(30, 0))
-            
             def set_today():
                 today = datetime.now()
                 year_var.set(str(today.year))
                 month_var.set(str(today.month))
                 day_var.set(str(today.day))
-            
             def apply_date():
                 try:
                     year = int(year_var.get())
                     month = int(month_var.get())
                     day = int(day_var.get())
-                    # Validate date
                     selected_date = datetime(year, month, day)
                     self.date_var.set(selected_date.strftime('%Y-%m-%d'))
                     top.destroy()
@@ -497,27 +494,21 @@ class TaskDialog(simpledialog.Dialog):
                     messagebox.showerror('Invalid Date', 'Please enter a valid date.')
                 except Exception as e:
                     messagebox.showerror('Error', f'An error occurred: {str(e)}')
-            
-            # Create buttons with highly visible text
             today_btn = tk.Button(btn_frame, text='Today', command=set_today,
                                 bg='lightblue', fg='black', font=('Arial', 14, 'bold'), 
                                 relief='raised', bd=3, padx=20, pady=10, cursor='hand2',
                                 activebackground='blue', activeforeground='white')
             today_btn.pack(side='left', padx=10)
-            
             ok_btn = tk.Button(btn_frame, text='OK', command=apply_date,
                              bg='lightgreen', fg='black', font=('Arial', 14, 'bold'), 
                              relief='raised', bd=3, padx=25, pady=10, cursor='hand2',
                              activebackground='green', activeforeground='white')
             ok_btn.pack(side='left', padx=10)
-            
             cancel_btn = tk.Button(btn_frame, text='Cancel', command=top.destroy,
                                  bg='lightcoral', fg='black', font=('Arial', 14, 'bold'), 
                                  relief='raised', bd=3, padx=20, pady=10, cursor='hand2',
                                  activebackground='red', activeforeground='white')
             cancel_btn.pack(side='left', padx=10)
-            
-            # Focus on OK button and bind Enter key
             ok_btn.focus_set()
             top.bind('<Return>', lambda e: apply_date())
             top.bind('<Escape>', lambda e: top.destroy())
