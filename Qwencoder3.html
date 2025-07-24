@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kanban & Calendar Task Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3b82f6',
+                        secondary: '#10b981',
+                        accent: '#8b5cf6',
+                        dark: '#1f2937',
+                        light: '#f9fafb'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .dragging {
+            opacity: 0.5;
+            transform: scale(0.98);
+        }
+        .task-card {
+            transition: all 0.2s ease;
+        }
+        .task-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        .calendar-day:hover {
+            background-color: #f3f4f6;
+        }
+        .status-todo { border-left: 4px solid #3b82f6; }
+        .status-inprogress { border-left: 4px solid #f59e0b; }
+        .status-done { border-left: 4px solid #10b981; }
+        .view-transition {
+            transition: opacity 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="mb-8 text-center">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">Task Tracker</h1>
+            <p class="text-gray-600">Kanban board & Calendar view for seamless task management</p>
+        </header>
+
+        <!-- View Toggle -->
+        <div class="flex justify-center mb-6">
+            <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button id="kanban-view" class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-l-lg border border-primary hover:bg-blue-700 focus:z-10 focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-th-large mr-2"></i>Kanban
+                </button>
+                <button id="calendar-view" class="px-4 py-2 text-sm font-medium text-gray-900 bg-white border-t border-b border-r border-gray-200 rounded-r-md hover:bg-gray-100 focus:z-10 focus:ring-2 focus:ring-blue-500">
+                    <i class="fas fa-calendar-alt mr-2"></i>Calendar
+                </button>
+            </div>
+        </div>
+
+        <!-- Add Task Form -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                <div class="md:col-span-2">
+                    <input type="text" id="task-input" placeholder="Enter a new task..." class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <input type="date" id="task-date" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <input type="time" id="task-time" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div class="flex space-x-2">
+                    <button id="add-task" class="flex-1 bg-primary text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center justify-center">
+                        <i class="fas fa-plus mr-2"></i>Add
+                    </button>
+                    <button id="breakdown-task" class="bg-accent text-white px-3 py-2 rounded-lg hover:bg-purple-700 transition flex items-center justify-center">
+                        <i class="fas fa-sparkles"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-4 flex items-center">
+                <input type="checkbox" id="reminder-toggle" class="mr-2">
+                <label for="reminder-toggle" class="text-gray-700">Set Reminder (15 mins before)</label>
+            </div>
+        </div>
+
+        <!-- Kanban Board -->
+        <div id="kanban-container" class="view-transition">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- To Do Column -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-primary text-white p-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-tasks mr-2"></i>To Do
+                        </h2>
+                    </div>
+                    <div id="todo-column" class="p-4 min-h-[400px]" data-status="todo">
+                        <!-- Tasks will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- In Progress Column -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-yellow-500 text-white p-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-sync-alt mr-2"></i>In Progress
+                        </h2>
+                    </div>
+                    <div id="inprogress-column" class="p-4 min-h-[400px]" data-status="inprogress">
+                        <!-- Tasks will be added here dynamically -->
+                    </div>
+                </div>
+
+                <!-- Done Column -->
+                <div class="bg-white rounded-lg shadow-md overflow-hidden">
+                    <div class="bg-secondary text-white p-4">
+                        <h2 class="text-xl font-semibold flex items-center">
+                            <i class="fas fa-check-circle mr-2"></i>Done
+                        </h2>
+                    </div>
+                    <div id="done-column" class="p-4 min-h-[400px]" data-status="done">
+                        <!-- Tasks will be added here dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar View -->
+        <div id="calendar-container" class="hidden view-transition">
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="calendar-title" class="text-2xl font-bold text-gray-800"></h2>
+                    <div class="flex space-x-2">
+                        <button id="prev-month" class="p-2 rounded-lg hover:bg-gray-100">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <button id="next-month" class="p-2 rounded-lg hover:bg-gray-100">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-7 gap-1 mb-2">
+                    <div class="text-center font-medium text-gray-500 py-2">Sun</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Mon</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Tue</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Wed</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Thu</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Fri</div>
+                    <div class="text-center font-medium text-gray-500 py-2">Sat</div>
+                </div>
+                <div id="calendar-grid" class="grid grid-cols-7 gap-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Task Modal -->
+    <div id="task-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">Edit Task</h3>
+                <input type="text" id="edit-task-title" class="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-primary focus:border-transparent">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <input type="date" id="edit-task-date" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                    <input type="time" id="edit-task-time" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div class="flex items-center mb-6">
+                    <input type="checkbox" id="edit-reminder-toggle" class="mr-2">
+                    <label for="edit-reminder-toggle" class="text-gray-700">Set Reminder (15 mins before)</label>
+                </div>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancel-edit" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button id="save-edit" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-blue-700">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md">
+            <div class="p-6">
+                <h3 class="text-xl font-bold text-gray-800 mb-2">Confirm Deletion</h3>
+                <p class="text-gray-600 mb-6">Are you sure you want to delete this task? This action cannot be undone.</p>
+                <div class="flex justify-end space-x-3">
+                    <button id="cancel-delete" class="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                    <button id="confirm-delete" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Task Management System
+        class TaskManager {
+            constructor() {
+                this.tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+                this.currentEditingTask = null;
+                this.currentDeletingTask = null;
+                this.currentView = 'kanban';
+                this.currentMonth = new Date().getMonth();
+                this.currentYear = new Date().getFullYear();
+                
+                this.init();
+            }
+
+            init() {
+                this.setupEventListeners();
+                this.setupDateDefaults();
+                this.render();
+            }
+
+            setupEventListeners() {
+                // View toggle
+                document.getElementById('kanban-view').addEventListener('click', () => this.switchView('kanban'));
+                document.getElementById('calendar-view').addEventListener('click', () => this.switchView('calendar'));
+
+                // Task creation
+                document.getElementById('add-task').addEventListener('click', () => this.addTask());
+                document.getElementById('breakdown-task').addEventListener('click', () => this.breakdownTask());
+                document.getElementById('task-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.addTask();
+                });
+
+                // Calendar navigation
+                document.getElementById('prev-month').addEventListener('click', () => this.previousMonth());
+                document.getElementById('next-month').addEventListener('click', () => this.nextMonth());
+
+                // Modal actions
+                document.getElementById('cancel-edit').addEventListener('click', () => this.closeEditModal());
+                document.getElementById('save-edit').addEventListener('click', () => this.saveEditedTask());
+                document.getElementById('cancel-delete').addEventListener('click', () => this.closeDeleteModal());
+                document.getElementById('confirm-delete').addEventListener('click', () => this.confirmDeleteTask());
+
+                // Drag and drop
+                this.setupDragAndDrop();
+            }
+
+            setupDateDefaults() {
+                const now = new Date();
+                const dateInput = document.getElementById('task-date');
+                const timeInput = document.getElementById('task-time');
+                
+                // Format date as YYYY-MM-DD
+                const formattedDate = now.toISOString().split('T')[0];
+                dateInput.value = formattedDate;
+                
+                // Format time as HH:MM
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(Math.ceil(now.getMinutes() / 15) * 15 % 60).padStart(2, '0');
+                timeInput.value = `${hours}:${minutes}`;
+            }
+
+            switchView(view) {
+                this.currentView = view;
+                
+                if (view === 'kanban') {
+                    document.getElementById('kanban-container').classList.remove('hidden');
+                    document.getElementById('calendar-container').classList.add('hidden');
+                    document.getElementById('kanban-view').classList.add('bg-primary', 'text-white');
+                    document.getElementById('calendar-view').classList.remove('bg-primary', 'text-white');
+                    document.getElementById('kanban-view').classList.remove('bg-white', 'text-gray-900');
+                    document.getElementById('calendar-view').classList.add('bg-white', 'text-gray-900');
+                } else {
+                    document.getElementById('kanban-container').classList.add('hidden');
+                    document.getElementById('calendar-container').classList.remove('hidden');
+                    document.getElementById('calendar-view').classList.add('bg-primary', 'text-white');
+                    document.getElementById('kanban-view').classList.remove('bg-primary', 'text-white');
+                    document.getElementById('calendar-view').classList.remove('bg-white', 'text-gray-900');
+                    document.getElementById('kanban-view').classList.add('bg-white', 'text-gray-900');
+                    this.renderCalendar();
+                }
+            }
+
+            addTask() {
+                const title = document.getElementById('task-input').value.trim();
+                const date = document.getElementById('task-date').value;
+                const time = document.getElementById('task-time').value;
+                const reminder = document.getElementById('reminder-toggle').checked;
+
+                if (!title) {
+                    alert('Please enter a task title');
+                    return;
+                }
+
+                if (!date || !time) {
+                    alert('Please select both date and time');
+                    return;
+                }
+
+                const task = {
+                    id: Date.now(),
+                    title,
+                    date,
+                    time,
+                    status: 'todo',
+                    reminder,
+                    createdAt: new Date().toISOString()
+                };
+
+                this.tasks.push(task);
+                this.saveTasks();
+                this.render();
+                
+                // Clear form
+                document.getElementById('task-input').value = '';
+                this.setupDateDefaults();
+                document.getElementById('reminder-toggle').checked = false;
+            }
+
+            breakdownTask() {
+                const title = document.getElementById('task-input').value.trim();
+                const date = document.getElementById('task-date').value;
+                const time = document.getElementById('task-time').value;
+                const reminder = document.getElementById('reminder-toggle').checked;
+
+                if (!title) {
+                    alert('Please enter a project title to break down');
+                    return;
+                }
+
+                if (!date || !time) {
+                    alert('Please select both date and time');
+                    return;
+                }
+
+                // Simulate AI breakdown with mock subtasks
+                const mockSubtasks = [
+                    `Research and gather requirements for "${title}"`,
+                    `Create initial plan and timeline`,
+                    `Set up project environment`,
+                    `Develop core features`,
+                    `Test and debug`,
+                    `Prepare final documentation`,
+                    `Review and finalize`
+                ];
+
+                mockSubtasks.forEach((subtask, index) => {
+                    const subtaskDate = new Date(date);
+                    subtaskDate.setDate(subtaskDate.getDate() + index);
+                    
+                    const task = {
+                        id: Date.now() + index,
+                        title: subtask,
+                        date: subtaskDate.toISOString().split('T')[0],
+                        time,
+                        status: 'todo',
+                        reminder: index === 0 ? reminder : false,
+                        createdAt: new Date().toISOString()
+                    };
+
+                    this.tasks.push(task);
+                });
+
+                this.saveTasks();
+                this.render();
+                
+                // Clear form
+                document.getElementById('task-input').value = '';
+                this.setupDateDefaults();
+                document.getElementById('reminder-toggle').checked = false;
+                
+                alert(`Project broken down into ${mockSubtasks.length} subtasks!`);
+            }
+
+            editTask(taskId) {
+                this.currentEditingTask = this.tasks.find(task => task.id === taskId);
+                if (this.currentEditingTask) {
+                    document.getElementById('edit-task-title').value = this.currentEditingTask.title;
+                    document.getElementById('edit-task-date').value = this.currentEditingTask.date;
+                    document.getElementById('edit-task-time').value = this.currentEditingTask.time;
+                    document.getElementById('edit-reminder-toggle').checked = this.currentEditingTask.reminder;
+                    document.getElementById('task-modal').classList.remove('hidden');
+                }
+            }
+
+            saveEditedTask() {
+                if (this.currentEditingTask) {
+                    this.currentEditingTask.title = document.getElementById('edit-task-title').value;
+                    this.currentEditingTask.date = document.getElementById('edit-task-date').value;
+                    this.currentEditingTask.time = document.getElementById('edit-task-time').value;
+                    this.currentEditingTask.reminder = document.getElementById('edit-reminder-toggle').checked;
+                    
+                    this.saveTasks();
+                    this.render();
+                    this.closeEditModal();
+                }
+            }
+
+            closeEditModal() {
+                document.getElementById('task-modal').classList.add('hidden');
+                this.currentEditingTask = null;
+            }
+
+            deleteTask(taskId) {
+                this.currentDeletingTask = taskId;
+                document.getElementById('delete-modal').classList.remove('hidden');
+            }
+
+            confirmDeleteTask() {
+                if (this.currentDeletingTask) {
+                    this.tasks = this.tasks.filter(task => task.id !== this.currentDeletingTask);
+                    this.saveTasks();
+                    this.render();
+                    this.closeDeleteModal();
+                }
+            }
+
+            closeDeleteModal() {
+                document.getElementById('delete-modal').classList.add('hidden');
+                this.currentDeletingTask = null;
+            }
+
+            updateTaskStatus(taskId, newStatus) {
+                const task = this.tasks.find(task => task.id === taskId);
+                if (task) {
+                    const oldStatus = task.status;
+                    task.status = newStatus;
+                    this.saveTasks();
+                    this.render();
+                    
+                    // Celebrate when moving to done
+                    if (newStatus === 'done' && oldStatus !== 'done') {
+                        this.celebrate();
+                    }
+                }
+            }
+
+            celebrate() {
+                confetti({
+                    particleCount: 150,
+                    spread: 70,
+                    origin: { y: 0.6 }
+                });
+            }
+
+            setupDragAndDrop() {
+                const columns = document.querySelectorAll('[data-status]');
+                
+                columns.forEach(column => {
+                    column.addEventListener('dragover', (e) => {
+                        e.preventDefault();
+                        column.classList.add('bg-blue-50');
+                    });
+                    
+                    column.addEventListener('dragleave', () => {
+                        column.classList.remove('bg-blue-50');
+                    });
+                    
+                    column.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        column.classList.remove('bg-blue-50');
+                        
+                        const taskId = e.dataTransfer.getData('text/plain');
+                        const newStatus = column.dataset.status;
+                        
+                        this.updateTaskStatus(parseInt(taskId), newStatus);
+                    });
+                });
+            }
+
+            saveTasks() {
+                localStorage.setItem('tasks', JSON.stringify(this.tasks));
+            }
+
+            render() {
+                this.renderKanban();
+                if (this.currentView === 'calendar') {
+                    this.renderCalendar();
+                }
+            }
+
+            renderKanban() {
+                // Sort tasks by date and time
+                const sortedTasks = [...this.tasks].sort((a, b) => {
+                    const dateA = new Date(`${a.date}T${a.time}`);
+                    const dateB = new Date(`${b.date}T${b.time}`);
+                    return dateA - dateB;
+                });
+
+                // Render tasks in each column
+                const todoTasks = sortedTasks.filter(task => task.status === 'todo');
+                const inProgressTasks = sortedTasks.filter(task => task.status === 'inprogress');
+                const doneTasks = sortedTasks.filter(task => task.status === 'done');
+
+                this.renderColumn('todo-column', todoTasks);
+                this.renderColumn('inprogress-column', inProgressTasks);
+                this.renderColumn('done-column', doneTasks);
+            }
+
+            renderColumn(columnId, tasks) {
+                const column = document.getElementById(columnId);
+                column.innerHTML = '';
+
+                if (tasks.length === 0) {
+                    column.innerHTML = '<p class="text-gray-500 text-center py-8">No tasks here</p>';
+                    return;
+                }
+
+                tasks.forEach(task => {
+                    const taskElement = this.createTaskElement(task);
+                    column.appendChild(taskElement);
+                });
+            }
+
+            createTaskElement(task) {
+                const taskElement = document.createElement('div');
+                taskElement.className = `task-card bg-white rounded-lg shadow p-4 mb-3 cursor-move status-${task.status}`;
+                taskElement.draggable = true;
+                taskElement.dataset.taskId = task.id;
+                
+                const taskDate = new Date(`${task.date}T${task.time}`);
+                const formattedDate = taskDate.toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric' 
+                });
+                const formattedTime = taskDate.toLocaleTimeString('en-US', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+                
+                const statusClass = {
+                    'todo': 'text-blue-600',
+                    'inprogress': 'text-yellow-600',
+                    'done': 'text-green-600'
+                }[task.status];
+                
+                const statusText = {
+                    'todo': 'To Do',
+                    'inprogress': 'In Progress',
+                    'done': 'Done'
+                }[task.status];
+
+                taskElement.innerHTML = `
+                    
+${task.title}</h3> <div class="flex space-x-1"> <button class="edit-task text-gray-500 hover:text-blue-600" data-task-id="${task.id}"> <i class="fas fa-trash text-sm"></i> </button> </div> </div> <div class="flex justify-between items-center text-sm"> <span class="${statusClass}">${statusText}</span> <span class="text-gray-500">${formattedDate} at ${formattedTime}</span> </div> ${task.reminder ? '
+Reminder set
+' : ''} `; // Add drag events taskElement.addEventListener('dragstart', (e) => { e.dataTransfer.setData('text/plain', task.id.toString()); setTimeout(() => taskElement.classList.add('dragging'), 0); }); taskElement.addEventListener('dragend', () => { taskElement.classList.remove('dragging'); }); // Add edit and delete event listeners taskElement.querySelector('.edit-task').addEventListener('click', (e) => { e.stopPropagation(); this.editTask(parseInt(e.target.closest('.edit-task').dataset.taskId)); }); taskElement.querySelector('.delete-task').addEventListener('click', (e) => { e.stopPropagation(); this.deleteTask(parseInt(e.target.closest('.delete-task').dataset.taskId)); }); return taskElement; } renderCalendar() { const calendarGrid = document.getElementById('calendar-grid'); const calendarTitle = document.getElementById('calendar-title'); // Set calendar title const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']; calendarTitle.textContent = `${monthNames[this.currentMonth]} ${this.currentYear}`; // Clear grid calendarGrid.innerHTML = ''; // Get first day of month and days in month const firstDay = new Date(this.currentYear, this.currentMonth, 1).getDay(); const daysInMonth = new Date(this.currentYear, this.currentMonth + 1, 0).getDate(); // Add empty cells for days before the first day for (let i = 0; i < firstDay; i++) { const emptyCell = document.createElement('div'); emptyCell.className = 'calendar-day p-2 h-24 border border-gray-100'; calendarGrid.appendChild(emptyCell); } // Add cells for each day of the month for (let day = 1; day <= daysInMonth; day++) { const dayCell = document.createElement('div'); dayCell.className = 'calendar-day p-2 h-24 border border-gray-100 overflow-y-auto'; const dayHeader = document.createElement('div'); dayHeader.className = 'font-medium text-gray-700'; dayHeader.textContent = day; dayCell.appendChild(dayHeader); // Add tasks for this day const dateStr = `${this.currentYear}-${String(this.currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`; const dayTasks = this.tasks.filter(task => task.date === dateStr); dayTasks.forEach(task => { const taskBadge = document.createElement('div'); taskBadge.className = `text-xs px-2 py-1 rounded mt-1 truncate ${ task.status === 'todo' ? 'bg-blue-100 text-blue-800' : task.status === 'inprogress' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800' }`; taskBadge.textContent = task.title; taskBadge.title = task.title; dayCell.appendChild(taskBadge); }); calendarGrid.appendChild(dayCell); } } previousMonth() { this.currentMonth--; if (this.currentMonth < 0) { this.currentMonth = 11; this.currentYear--; } this.renderCalendar(); } nextMonth() { this.currentMonth++; if (this.currentMonth > 11) { this.currentMonth = 0; this.currentYear++; } this.renderCalendar(); } } // Initialize the app when the DOM is loaded document.addEventListener('DOMContentLoaded', () => { new TaskManager(); }); </script> </body> </html>
