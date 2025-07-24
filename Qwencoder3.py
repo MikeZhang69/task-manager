@@ -254,11 +254,14 @@ class TaskTrackerApp:
             status = task.get("status", "todo")
             if status in counts:
                 counts[status] += 1
-        
+
         for status, count in counts.items():
             label = self.count_labels.get(status)
             if label:
-                label.configure(text=str(count))
+                try:
+                    label.configure(text=str(count))
+                except tk.TclError:
+                    pass
     
     def render_calendar(self):
         # Update month/year display
