@@ -70,3 +70,7 @@ This application is built with vanilla HTML, CSS (using Tailwind CSS), and JavaS
 - **JavaScript (ES6+)** – For all application logic.
 - **Gemini API** – For AI-powered task generation.
 - **Canvas Confetti** – For the completion animation.
+
+## Available to use at:
+- Available at https://mikezhang69.github.io/task-manager/task-tracker.html, all tasks are stored locally in the browser you're currently using.
+
